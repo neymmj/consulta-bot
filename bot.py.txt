@@ -1,58 +1,34 @@
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+from flask import Flask, request
+import requests
 import os
 
-# Pega o TOKEN do Render ou variável local
-TOKEN = os.getenv("TOKEN", "7984880246:AAHl6hcrprel6GLQ5mti6xeioPA0IaGWQSU")
+TOKEN = os.environ.get("BOT_TOKEN")
+URL = f"https://api.telegram.org/bot{TOKEN}/"
 
-# /start
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Olá! Me envie /cpf, /telefone, /email ou /nome com o dado para consultar.")
+app = Flask(__name__)
 
-# /cpf
-async def cpf(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not context.args:
-        await update.message.reply_text("Uso: /cpf 00000000000")
-        return
-    numero = context.args[0]
-    # Simulação de retorno
-    resultado = f"📄 Consulta CPF {numero}:\nNome: João da Silva\nSituação: Regular"
-    await update.message.reply_text(resultado)
+def send_message(chat_id, text):
+    requests.post(URL + "sendMessage", data={"chat_id": chat_id, "text": text})
 
-# /telefone
-async def telefone(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not context.args:
-        await update.message.reply_text("Uso: /telefone 11999999999")
-        return
-    numero = context.args[0]
-    resultado = f"📞 Consulta Telefone {numero}:\nOperadora: Vivo\nCidade: São Paulo"
-    await update.message.reply_text(resultado)
+@app.route(f"/{TOKEN}", methods=["POST"])
+def webhook():
+    data = request.get_json()
+    if "message" in data:
+        chat_id = data["message"]["chat"]["id"]
+        text = data["message"].get("text", "")
 
-# /email
-async def email(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not context.args:
-        await update.message.reply_text("Uso: /email exemplo@email.com")
-        return
-    endereco = context.args[0]
-    resultado = f"📧 Consulta Email {endereco}:\nStatus: Ativo\nProvedor: Gmail"
-    await update.message.reply_text(resultado)
+        if text.startswith("/cpf"):
+            send_message(chat_id, "🔍 Consulta de CPF não implementada ainda.")
+        elif text.startswith("/telefone"):
+            send_message(chat_id, "📞 Consulta de telefone não implementada ainda.")
+        else:
+            send_message(chat_id, "Comandos disponíveis: /cpf, /telefone")
 
-# /nome
-async def nome(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not context.args:
-        await update.message.reply_text("Uso: /nome João Silva")
-        return
-    nome_consulta = " ".join(context.args)
-    resultado = f"👤 Consulta Nome {nome_consulta}:\nCPF: 000.000.000-00\nCidade: Rio de Janeiro"
-    await update.message.reply_text(resultado)
+    return {"ok": True}
 
-# Configuração do bot
-app = ApplicationBuilder().token(TOKEN).build()
+@app.route("/")
+def home():
+    return "Bot online!"
 
-app.add_handler(CommandHandler("start", start))
-app.add_handler(CommandHandler("cpf", cpf))
-app.add_handler(CommandHandler("telefone", telefone))
-app.add_handler(CommandHandler("email", email))
-app.add_handler(CommandHandler("nome", nome))
-
-app.run_polling()
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
